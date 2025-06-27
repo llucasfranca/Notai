@@ -1,22 +1,38 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Text,
   View,
+  Text,
   FlatList,
-  SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Alert,
+  Alert
 } from 'react-native'
 import { Swipeable, RectButton } from 'react-native-gesture-handler'
 
 const { width } = Dimensions.get('window')
 const itemWidth = (width - 48) / 2
 
-export default function Home({ navigation }) {
-  const [notas, setNotas] = useState([])
-  const [pastas, setPastas] = useState([])
+export default function PastaDetalhe({ navigation, route }) {
+  const { pasta, notas: notasIniciais = [] } = route.params || {}
+
+  const [notas, setNotas] = useState(notasIniciais)
+  useEffect(() => {
+    if (route.params?.notaEditada) {
+      setNotas((prevNotas) =>
+        prevNotas.map((nota) =>
+          nota.id === route.params.notaEditada.id
+            ? route.params.notaEditada
+            : nota
+        )
+      )
+      navigation.setParams({ notaEditada: null })
+    }
+    if (route.params?.novaNota) {
+      setNotas((prev) => [...prev, route.params.novaNota])
+      navigation.setParams({ novaNota: null })
+    }
+  }, [route.params])
 
   const handleDeleteNota = (id) => {
     Alert.alert('Excluir nota', 'Deseja excluir esta nota?', [
@@ -25,17 +41,6 @@ export default function Home({ navigation }) {
         text: 'Excluir',
         style: 'destructive',
         onPress: () => setNotas((prev) => prev.filter((n) => n.id !== id)),
-      },
-    ])
-  }
-
-  const handleDeletePasta = (id) => {
-    Alert.alert('Excluir pasta', 'Deseja excluir esta pasta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: () => setPastas((prev) => prev.filter((p) => p.id !== id)),
       },
     ])
   }
@@ -53,71 +58,30 @@ export default function Home({ navigation }) {
       }
     >
       <TouchableOpacity
-        style={[styles.notaContainer, { backgroundColor: '#222' }]}
+        style={styles.notaContainer}
         onPress={() =>
-          navigation.navigate('EditNota', { nota: item, pastas })
+          navigation.navigate('EditNota', { nota: item, pastaId: pasta?.id })
         }
       >
-        <Text style={styles.tituloNota} numberOfLines={1}>
-          {item.titulo}
-        </Text>
-        <Text style={styles.descricaoNota} numberOfLines={3}>
-          {item.descricao}
-        </Text>
+        <Text style={styles.tituloNota}>{item.titulo}</Text>
+        <Text style={styles.descricaoNota}>{item.descricao}</Text>
       </TouchableOpacity>
     </Swipeable>
   )
 
-  const renderPasta = ({ item }) => (
-    <Swipeable
-      renderRightActions={(progress, dragX) =>
-        renderRightActions(progress, dragX, () => handleDeletePasta(item.id))
-      }
-    >
-      <TouchableOpacity
-        style={[styles.pastaContainer, { borderColor: item.cor }]}
-        onPress={() =>
-          navigation.navigate('PastaDetalhe', {
-            pasta: item,
-            notas: notas.filter((n) => n.pastaId === item.id),
-            onGoBack: (novaNota) =>
-              setNotas((prev) => [...prev, novaNota]),
-          })
-        }
-      >
-        <Text style={styles.nomePasta}>{item.nome}</Text>
-      </TouchableOpacity>
-    </Swipeable>
-  )
+  if (!pasta) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#00ff88', fontSize: 18 }}>
+          Pasta não encontrada.
+        </Text>
+      </View>
+    )
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.titulo}>Minhas Pastas</Text>
-
-      <FlatList
-        data={pastas}
-        keyExtractor={(item) => item.id}
-        horizontal
-        contentContainerStyle={styles.listaPastas}
-        renderItem={renderPasta}
-        ListEmptyComponent={
-          <Text style={styles.vazioTexto}>Nenhuma pasta criada.</Text>
-        }
-      />
-
-      <TouchableOpacity
-        style={styles.botaoNovaPasta}
-        onPress={() =>
-          navigation.navigate('NovaPasta', {
-            onGoBack: (novaPasta) =>
-              setPastas((prev) => [...prev, novaPasta]),
-          })
-        }
-      >
-        <Text style={styles.textoBotaoNovaPasta}>+ Nova Pasta</Text>
-      </TouchableOpacity>
-
-      <Text style={[styles.titulo, { marginTop: 20 }]}>Minhas Notas</Text>
+    <View style={styles.container}>
+      <Text style={styles.titulo}>{pasta.nome}</Text>
 
       <FlatList
         data={notas}
@@ -127,7 +91,7 @@ export default function Home({ navigation }) {
         renderItem={renderNota}
         ListEmptyComponent={
           <View style={styles.vazioContainer}>
-            <Text style={styles.vazioTexto}>Nenhuma nota ainda.</Text>
+            <Text style={styles.vazioTexto}>Nenhuma nota nesta pasta.</Text>
           </View>
         }
       />
@@ -136,7 +100,7 @@ export default function Home({ navigation }) {
         style={styles.fab}
         onPress={() =>
           navigation.navigate('Nova Nota', {
-            pastas,
+            pastaId: pasta.id,
             onGoBack: (novaNota) =>
               setNotas((prev) => [...prev, novaNota]),
           })
@@ -144,7 +108,7 @@ export default function Home({ navigation }) {
       >
         <Text style={styles.fabTexto}>+</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -161,37 +125,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 12,
   },
-  listaPastas: {
-    paddingVertical: 10,
-  },
-  pastaContainer: {
-    borderWidth: 2,
-    borderRadius: 15,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginHorizontal: 5,
-  },
-  nomePasta: {
-    color: '#00ff88',
-    fontSize: 16,
-  },
-  botaoNovaPasta: {
-    backgroundColor: '#00ff88',
-    borderRadius: 25,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignSelf: 'center',
-    marginBottom: 10,
-  },
-  textoBotaoNovaPasta: {
-    color: '#000',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
   listaNotas: {
     paddingBottom: 100,
   },
   notaContainer: {
+    backgroundColor: '#222',
     width: itemWidth,
     minHeight: 120,
     borderRadius: 20,
