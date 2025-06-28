@@ -9,27 +9,56 @@ import {
   Alert
 } from 'react-native'
 import { Swipeable, RectButton } from 'react-native-gesture-handler'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const { width } = Dimensions.get('window')
 const itemWidth = (width - 48) / 2
 
 export default function PastaDetalhe({ navigation, route }) {
-  const { pasta, notas: notasIniciais = [] } = route.params || {}
+  const { pasta } = route.params || {}
+  const [notas, setNotas] = useState([])
 
-  const [notas, setNotas] = useState(notasIniciais)
+  // Carrega as notas da pasta
+  const carregarNotas = async () => {
+    try {
+      const dados = await AsyncStorage.getItem(`notas_${pasta.id}`)
+      if (dados) {
+        setNotas(JSON.parse(dados))
+      }
+    } catch (e) {
+      console.error('Erro ao carregar notas:', e)
+    }
+  }
+
+  // Salva as notas da pasta
+  const salvarNotas = async (notasParaSalvar) => {
+    try {
+      await AsyncStorage.setItem(`notas_${pasta.id}`, JSON.stringify(notasParaSalvar))
+    } catch (e) {
+      console.error('Erro ao salvar notas:', e)
+    }
+  }
+
+  useEffect(() => {
+    carregarNotas()
+  }, [])
+
   useEffect(() => {
     if (route.params?.notaEditada) {
-      setNotas((prevNotas) =>
-        prevNotas.map((nota) =>
-          nota.id === route.params.notaEditada.id
-            ? route.params.notaEditada
-            : nota
-        )
+      const notasAtualizadas = notas.map((nota) =>
+        nota.id === route.params.notaEditada.id
+          ? route.params.notaEditada
+          : nota
       )
+      setNotas(notasAtualizadas)
+      salvarNotas(notasAtualizadas)
       navigation.setParams({ notaEditada: null })
     }
+
     if (route.params?.novaNota) {
-      setNotas((prev) => [...prev, route.params.novaNota])
+      const novaLista = [...notas, route.params.novaNota]
+      setNotas(novaLista)
+      salvarNotas(novaLista)
       navigation.setParams({ novaNota: null })
     }
   }, [route.params])
@@ -40,7 +69,11 @@ export default function PastaDetalhe({ navigation, route }) {
       {
         text: 'Excluir',
         style: 'destructive',
-        onPress: () => setNotas((prev) => prev.filter((n) => n.id !== id)),
+        onPress: () => {
+          const atualizadas = notas.filter((n) => n.id !== id)
+          setNotas(atualizadas)
+          salvarNotas(atualizadas)
+        }
       },
     ])
   }
@@ -54,15 +87,11 @@ export default function PastaDetalhe({ navigation, route }) {
   const renderNota = ({ item }) => (
     <Swipeable
       renderRightActions={(progress, dragX) =>
-        renderRightActions(progress, dragX, () => handleDeleteNota(item.id))
-      }
-    >
+        renderRightActions(progress, dragX, () => handleDeleteNota(item.id))}>
       <TouchableOpacity
         style={styles.notaContainer}
         onPress={() =>
-          navigation.navigate('EditNota', { nota: item, pastaId: pasta?.id })
-        }
-      >
+          navigation.navigate('EditNota', { nota: item, pastaId: pasta?.id })}>
         <Text style={styles.tituloNota}>{item.titulo}</Text>
         <Text style={styles.descricaoNota}>{item.descricao}</Text>
       </TouchableOpacity>
@@ -98,13 +127,11 @@ export default function PastaDetalhe({ navigation, route }) {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() =>
+        onPress={() => {
           navigation.navigate('Nova Nota', {
-            pastaId: pasta.id,
-            onGoBack: (novaNota) =>
-              setNotas((prev) => [...prev, novaNota]),
+            pastaId: pasta.id
           })
-        }
+        }}
       >
         <Text style={styles.fabTexto}>+</Text>
       </TouchableOpacity>

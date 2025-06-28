@@ -31,9 +31,8 @@ export default function NovaPasta({ navigation, route }) {
       nome,
       cor: corSelecionada,
     }
-    if (route.params?.onGoBack) {
-      route.params.onGoBack(novaPasta)
-    }
+
+    route.params?.onGoBack?.(novaPasta)
     navigation.goBack()
   }
 

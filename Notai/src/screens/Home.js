@@ -14,9 +14,20 @@ import { Swipeable, RectButton } from 'react-native-gesture-handler'
 const { width } = Dimensions.get('window')
 const itemWidth = (width - 48) / 2
 
-export default function Home({ navigation }) {
+export default function Home({ navigation, route }) {
   const [notas, setNotas] = useState([])
   const [pastas, setPastas] = useState([])
+
+  useEffect(() => {
+    if (route.params?.novaPasta) {
+      setPastas((prev) => [...prev, route.params.novaPasta])
+      navigation.setParams({ novaPasta: undefined })
+    }
+    if (route.params?.novaNota) {
+      setNotas((prev) => [...prev, route.params.novaNota])
+      navigation.setParams({ novaNota: undefined })
+    }
+  }, [route.params])
 
   const handleDeleteNota = (id) => {
     Alert.alert('Excluir nota', 'Deseja excluir esta nota?', [
@@ -79,9 +90,9 @@ export default function Home({ navigation }) {
         onPress={() =>
           navigation.navigate('PastaDetalhe', {
             pasta: item,
-            notas: notas.filter((n) => n.pastaId === item.id),
-            onGoBack: (novaNota) =>
-              setNotas((prev) => [...prev, novaNota]),
+            onGoBack: (novaNota) => {
+              if (novaNota) setNotas((prev) => [...prev, novaNota])
+            },
           })
         }
       >
@@ -109,8 +120,7 @@ export default function Home({ navigation }) {
         style={styles.botaoNovaPasta}
         onPress={() =>
           navigation.navigate('NovaPasta', {
-            onGoBack: (novaPasta) =>
-              setPastas((prev) => [...prev, novaPasta]),
+            onGoBack: (novaPasta) => setPastas((prev) => [...prev, novaPasta]),
           })
         }
       >
@@ -137,8 +147,7 @@ export default function Home({ navigation }) {
         onPress={() =>
           navigation.navigate('Nova Nota', {
             pastas,
-            onGoBack: (novaNota) =>
-              setNotas((prev) => [...prev, novaNota]),
+            onGoBack: (novaNota) => setNotas((prev) => [...prev, novaNota]),
           })
         }
       >
